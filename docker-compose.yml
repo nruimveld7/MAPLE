@@ -1,0 +1,282 @@
+x-webapp-common-env: &webapp-common-env
+  AUTH_ORIGIN: http://auth:3000
+  AUTH_BASE_PATH: /auth
+  PLATFORM_ORIGIN: http://platform:3000
+  PLATFORM_BASE_PATH: /platform
+
+services:
+  router:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./router/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - landing
+      - auth
+      - platform
+      - xmas
+      - workouts
+    networks:
+      - webapps
+
+  landing:
+    build:
+      context: .
+      dockerfile: ./landing/Dockerfile
+      args:
+        BASE_PATH: ""
+    restart: unless-stopped
+    environment:
+      <<: *webapp-common-env
+      HOST: 0.0.0.0
+      PORT: "3000"
+    expose:
+      - "3000"
+    networks:
+      - webapps
+
+  auth:
+    build:
+      context: .
+      dockerfile: ./auth/Dockerfile
+      args:
+        BASE_PATH: /auth
+    restart: unless-stopped
+    environment:
+      BASE_PATH: /auth
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://auth_user:dummy_auth_password@auth-db:5432/auth_db
+      MAILER_URL: http://mailer:3000
+      MAILER_INTERNAL_API_KEY: ${MAILER_INTERNAL_API_KEY}
+      APP_BRAND: ${APP_BRAND:-MAPLE}
+    expose:
+      - "3000"
+    depends_on:
+      - auth-db
+      - mailer
+    networks:
+      - webapps
+
+  xmas:
+    build:
+      context: .
+      dockerfile: ./applets/xmas/Dockerfile
+      args:
+        BASE_PATH: /xmas
+    restart: unless-stopped
+    environment:
+      <<: *webapp-common-env
+      BASE_PATH: /xmas
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://xmas_user:dummy_xmas_password@xmas-db:5432/xmas_db
+    expose:
+      - "3000"
+    depends_on:
+      - xmas-db
+    networks:
+      - webapps
+
+  platform:
+    build:
+      context: .
+      dockerfile: ./platform/Dockerfile
+      args:
+        BASE_PATH: /platform
+    restart: unless-stopped
+    environment:
+      <<: *webapp-common-env
+      BASE_PATH: /platform
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://platform_user:dummy_platform_password@platform-db:5432/platform_db
+      REQUIRED_PERMISSION: platform.manage
+      MAILER_URL: http://mailer:3000
+      MAILER_INTERNAL_API_KEY: ${MAILER_INTERNAL_API_KEY}
+      APP_BRAND: ${APP_BRAND:-MAPLE}
+      WEBAPPS_ROOT: ${WEBAPPS_ROOT:-/workspace}
+    volumes:
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    expose:
+      - "3000"
+    depends_on:
+      - platform-db
+      - mailer
+    networks:
+      - webapps
+
+  mailer:
+    build:
+      context: .
+      dockerfile: ./mailer/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      EMAIL_MODE: ${EMAIL_MODE:-console}
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      SMTP_USER: ${SMTP_USER:-your-mailer-account@example.com}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM:-MAPLE <your-mailer-account@example.com>}
+      MAILER_INTERNAL_API_KEY: ${MAILER_INTERNAL_API_KEY}
+      APP_BRAND: ${APP_BRAND:-MAPLE}
+    expose:
+      - "3000"
+    networks:
+      - webapps
+
+  workouts:
+    build:
+      context: .
+      dockerfile: ./applets/workouts/Dockerfile
+      args:
+        BASE_PATH: /workouts
+    restart: unless-stopped
+    environment:
+      <<: *webapp-common-env
+      BASE_PATH: /workouts
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://workouts_user:dummy_workouts_password@workouts-db:5432/workouts_db
+    expose:
+      - "3000"
+    depends_on:
+      - workouts-db
+    networks:
+      - webapps
+
+  auth-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: dummy_auth_password
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  auth-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - auth-db
+    environment:
+      POSTGRES_HOST: auth-db
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      PGPASSWORD: dummy_auth_password
+    volumes:
+      - ./auth/db/migrations:/migrations:ro
+      - ./auth/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  xmas-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xmas_db
+      POSTGRES_USER: xmas_user
+      POSTGRES_PASSWORD: dummy_xmas_password
+    volumes:
+      - xmas-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  xmas-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - xmas-db
+    environment:
+      POSTGRES_HOST: xmas-db
+      POSTGRES_DB: xmas_db
+      POSTGRES_USER: xmas_user
+      PGPASSWORD: dummy_xmas_password
+    volumes:
+      - ./applets/xmas/db/migrations:/migrations:ro
+      - ./applets/xmas/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  platform-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform_db
+      POSTGRES_USER: platform_user
+      POSTGRES_PASSWORD: dummy_platform_password
+    volumes:
+      - platform-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  platform-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - platform-db
+    environment:
+      POSTGRES_HOST: platform-db
+      POSTGRES_DB: platform_db
+      POSTGRES_USER: platform_user
+      PGPASSWORD: dummy_platform_password
+    volumes:
+      - ./platform/db/migrations:/migrations:ro
+      - ./platform/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  workouts-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: workouts_db
+      POSTGRES_USER: workouts_user
+      POSTGRES_PASSWORD: dummy_workouts_password
+    volumes:
+      - workouts-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  workouts-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - workouts-db
+    environment:
+      POSTGRES_HOST: workouts-db
+      POSTGRES_DB: workouts_db
+      POSTGRES_USER: workouts_user
+      PGPASSWORD: dummy_workouts_password
+    volumes:
+      - ./applets/workouts/db/migrations:/migrations:ro
+      - ./applets/workouts/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+networks:
+  webapps:
+    name: webapps
+
+volumes:
+  auth-db-data:
+  xmas-db-data:
+  platform-db-data:
+  workouts-db-data:

@@ -1,0 +1,295 @@
+services:
+  router-dev:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "${ROUTER_DEV_PORT:-8081}:80"
+    volumes:
+      - ./router/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - landing-dev
+      - auth-dev
+      - platform-dev
+      - xmas-dev
+      - workouts-dev
+    networks:
+      - webapps
+
+  landing-dev:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      BASE_PATH: ""
+      HOST: 0.0.0.0
+      PORT: "3000"
+      PLATFORM_ORIGIN: http://platform-dev:3000
+      PLATFORM_BASE_PATH: /platform
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - ./landing:/app
+      - ./shared-shell:/shared-shell
+      - landing-node-modules:/app/node_modules
+    expose:
+      - "3000"
+    networks:
+      - webapps
+
+  auth-dev:
+    image: node:22-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      BASE_PATH: /auth
+      HOST: 0.0.0.0
+      PORT: "3000"
+      PLATFORM_ORIGIN: http://platform-dev:3000
+      PLATFORM_BASE_PATH: /platform
+      DATABASE_URL: postgres://auth_user:dummy_auth_password@auth-db:5432/auth_db
+      MAILER_URL: http://mailer:3000
+      MAILER_INTERNAL_API_KEY: ${MAILER_INTERNAL_API_KEY}
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - ./auth:/app
+      - ./shared-shell:/shared-shell
+      - auth-node-modules:/app/node_modules
+    expose:
+      - "3000"
+    depends_on:
+      - auth-db
+      - mailer
+    networks:
+      - webapps
+
+  xmas-dev:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      BASE_PATH: /xmas
+      HOST: 0.0.0.0
+      PORT: "3000"
+      AUTH_BASE_URL: /auth
+      DATABASE_URL: postgres://xmas_user:dummy_xmas_password@xmas-db:5432/xmas_db
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - ./applets/xmas:/app
+      - ./shared-shell:/shared-shell
+      - xmas-node-modules:/app/node_modules
+    expose:
+      - "3000"
+    depends_on:
+      - xmas-db
+    networks:
+      - webapps
+
+  platform-dev:
+    build:
+      context: .
+      dockerfile: ./platform/Dockerfile
+      args:
+        BASE_PATH: /platform
+    restart: unless-stopped
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      BASE_PATH: /platform
+      HOST: 0.0.0.0
+      PORT: "3000"
+      AUTH_ORIGIN: http://auth-dev:3000
+      AUTH_BASE_PATH: /auth
+      DATABASE_URL: postgres://platform_user:dummy_platform_password@platform-db:5432/platform_db
+      REQUIRED_PERMISSION: platform.manage
+      MAILER_URL: http://mailer:3000
+      MAILER_INTERNAL_API_KEY: ${MAILER_INTERNAL_API_KEY}
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      WEBAPPS_ROOT: ${WEBAPPS_ROOT:-/workspace}
+    volumes:
+      - ./platform:/app
+      - ./:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared-shell:/shared-shell
+      - platform-node-modules:/app/node_modules
+    expose:
+      - "3000"
+    depends_on:
+      - platform-db
+      - mailer
+    networks:
+      - webapps
+
+
+  workouts-dev:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command: >-
+      sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      BASE_PATH: /workouts
+      HOST: 0.0.0.0
+      PORT: "3000"
+      AUTH_BASE_URL: /auth
+      DATABASE_URL: postgres://workouts_user:dummy_workouts_password@workouts-db:5432/workouts_db
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-localhost,127.0.0.1}
+    volumes:
+      - ./applets/workouts:/app
+      - ./shared-shell:/shared-shell
+      - workouts-node-modules:/app/node_modules
+    expose:
+      - "3000"
+    depends_on:
+      - workouts-db
+    networks:
+      - webapps
+
+  auth-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: dummy_auth_password
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  auth-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - auth-db
+    environment:
+      POSTGRES_HOST: auth-db
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      PGPASSWORD: dummy_auth_password
+    volumes:
+      - ./auth/db/migrations:/migrations:ro
+      - ./auth/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  xmas-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: xmas_db
+      POSTGRES_USER: xmas_user
+      POSTGRES_PASSWORD: dummy_xmas_password
+    volumes:
+      - xmas-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  xmas-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - xmas-db
+    environment:
+      POSTGRES_HOST: xmas-db
+      POSTGRES_DB: xmas_db
+      POSTGRES_USER: xmas_user
+      PGPASSWORD: dummy_xmas_password
+    volumes:
+      - ./applets/xmas/db/migrations:/migrations:ro
+      - ./applets/xmas/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  platform-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform_db
+      POSTGRES_USER: platform_user
+      POSTGRES_PASSWORD: dummy_platform_password
+    volumes:
+      - platform-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  platform-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - platform-db
+    environment:
+      POSTGRES_HOST: platform-db
+      POSTGRES_DB: platform_db
+      POSTGRES_USER: platform_user
+      PGPASSWORD: dummy_platform_password
+    volumes:
+      - ./platform/db/migrations:/migrations:ro
+      - ./platform/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+  workouts-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: workouts_db
+      POSTGRES_USER: workouts_user
+      POSTGRES_PASSWORD: dummy_workouts_password
+    volumes:
+      - workouts-db-data:/var/lib/postgresql/data
+    networks:
+      - webapps
+
+  workouts-db-migrate:
+    image: postgres:16-alpine
+    profiles:
+      - migrate
+    depends_on:
+      - workouts-db
+    environment:
+      POSTGRES_HOST: workouts-db
+      POSTGRES_DB: workouts_db
+      POSTGRES_USER: workouts_user
+      PGPASSWORD: dummy_workouts_password
+    volumes:
+      - ./applets/workouts/db/migrations:/migrations:ro
+      - ./applets/workouts/db/run-migrations.sh:/run-migrations.sh:ro
+    command: ["/run-migrations.sh"]
+    networks:
+      - webapps
+
+networks:
+  webapps:
+    name: webapps
+
+volumes:
+  landing-node-modules:
+  auth-node-modules:
+  xmas-node-modules:
+  platform-node-modules:
+  workouts-node-modules:
+  xmas-dev-node-modules:
+  platform-dev-node-modules:
+  auth-dev-node-modules:
+  workouts-dev-node-modules:
+  auth-db-data:
+  xmas-db-data:
+  platform-db-data:
+  workouts-db-data:

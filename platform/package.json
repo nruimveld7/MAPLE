@@ -1,0 +1,23 @@
+{
+  "name": "platform",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "node build"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "latest",
+    "@sveltejs/kit": "latest",
+    "@types/pg": "^8.20.0",
+    "svelte": "latest",
+    "vite": "latest"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "argon2": "^0.44.0",
+    "pg": "^8.20.0"
+  }
+}

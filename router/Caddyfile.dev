@@ -1,0 +1,26 @@
+:80 {
+    redir /auth /auth/ 308
+    redir /platform /platform/ 308
+    redir /xmas /xmas/ 308
+    redir /workouts /workouts/ 308
+
+    handle /auth/* {
+        reverse_proxy auth-dev:3000
+    }
+
+    handle /platform/* {
+        reverse_proxy platform-dev:3000
+    }
+
+    handle /xmas/* {
+        reverse_proxy xmas-dev:3000
+    }
+
+    handle /workouts/* {
+        reverse_proxy workouts-dev:3000
+    }
+
+    handle {
+        reverse_proxy landing-dev:3000
+    }
+}

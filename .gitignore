@@ -1,0 +1,56 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# Node and JS artifacts
+**/node_modules/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/.svelte-kit/
+**/.cache/
+**/coverage/
+**/*.tsbuildinfo
+
+# Logs and temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+tmp/
+temp/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Container/runtime data
+**/data/
+**/postgres-data/
+**/mysql-data/
+**/redis-data/
+**/uploads/
+**/storage/
+
+# Backups and archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.bak
+*.dump
