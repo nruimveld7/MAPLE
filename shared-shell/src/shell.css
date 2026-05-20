@@ -1,0 +1,282 @@
+:root {
+	--shell-bg-base: #0d1117;
+	--shell-text: #f0f6fc;
+	--shell-muted: #8b949e;
+	--shell-border: rgba(240, 246, 252, 0.12);
+	--shell-border-strong: rgba(240, 246, 252, 0.22);
+	--shell-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+
+	/* User-account theme variables */
+	--shell-spotlight-primary: #58a6ff;
+	--shell-spotlight-secondary: #a855f7;
+
+	/* Global aliases apps/applets can consume directly. */
+	--app-theme-bg: var(--shell-bg-base);
+	--app-theme-text: var(--shell-text);
+	--app-theme-muted: var(--shell-muted);
+	--app-theme-border: var(--shell-border);
+	--app-theme-border-strong: var(--shell-border-strong);
+	--app-theme-shadow: var(--shell-shadow);
+	--app-accent-primary: var(--shell-spotlight-primary);
+	--app-accent-secondary: var(--shell-spotlight-secondary);
+}
+
+[data-theme='light'] {
+	--shell-bg-base: #f4f8ff;
+	--shell-text: #0f172a;
+	--shell-muted: #475569;
+	--shell-border: rgba(15, 23, 42, 0.14);
+	--shell-border-strong: rgba(15, 23, 42, 0.24);
+	--shell-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+[data-theme='system'] {
+	--shell-bg-base: #0d1117;
+	--shell-text: #f0f6fc;
+	--shell-muted: #8b949e;
+	--shell-border: rgba(240, 246, 252, 0.12);
+	--shell-border-strong: rgba(240, 246, 252, 0.22);
+	--shell-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+@media (prefers-color-scheme: light) {
+	[data-theme='system'] {
+		--shell-bg-base: #f4f8ff;
+		--shell-text: #0f172a;
+		--shell-muted: #475569;
+		--shell-border: rgba(15, 23, 42, 0.14);
+		--shell-border-strong: rgba(15, 23, 42, 0.24);
+		--shell-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+	}
+}
+
+/* Landing root gradient baseline for shell backgrounds. */
+body {
+	margin: 0;
+	min-height: 100vh;
+	font-family:
+		Inter,
+		ui-sans-serif,
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif;
+	background:
+		radial-gradient(
+			circle at top left,
+			color-mix(in srgb, var(--shell-spotlight-primary) 20%, transparent),
+			transparent 34rem
+		),
+		radial-gradient(
+			circle at bottom right,
+			color-mix(in srgb, var(--shell-spotlight-secondary) 16%, transparent),
+			transparent 32rem
+		),
+		var(--shell-bg-base);
+	color: var(--shell-text);
+	overflow-x: hidden;
+}
+
+.page-shell {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	grid-template-rows: auto 1fr;
+	padding: clamp(1.25rem, 3vw, 3rem);
+	overflow: visible;
+}
+
+.shell-loader {
+	min-height: 100vh;
+	display: grid;
+	place-items: center;
+	padding: 2rem;
+}
+
+.shell-loader-spinner {
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 999px;
+	border: 3px solid color-mix(in srgb, var(--shell-text) 24%, transparent);
+	border-top-color: color-mix(in srgb, var(--shell-text) 88%, transparent);
+	animation: shell-spin 700ms linear infinite;
+}
+
+@keyframes shell-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+header {
+	position: relative;
+	display: flex;
+	align-items: center;
+	min-height: 44px;
+	margin-bottom: 34px;
+}
+
+.user-menu-shell {
+	position: relative;
+}
+
+.hero {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%);
+	text-align: center;
+	margin: 0;
+	pointer-events: none;
+}
+
+.hero h1 {
+	white-space: nowrap;
+}
+
+.brand-mark {
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	width: 44px;
+	height: 44px;
+	border-radius: 14px;
+	display: grid;
+	place-items: center;
+	background: linear-gradient(
+		135deg,
+		var(--shell-spotlight-primary) 0%,
+		color-mix(in srgb, var(--shell-spotlight-primary) 64%, var(--shell-spotlight-secondary)) 56%,
+		var(--shell-spotlight-secondary) 100%
+	);
+	box-shadow: 0 12px 36px color-mix(in srgb, var(--shell-spotlight-primary) 36%, transparent);
+	font-weight: 800;
+	color: white;
+	font: inherit;
+	transition:
+		transform 160ms ease,
+		box-shadow 160ms ease,
+		filter 160ms ease;
+}
+
+.brand-mark:hover,
+.brand-mark:focus-visible,
+.brand-mark[aria-expanded='true'] {
+	transform: translateY(-1px);
+	filter: brightness(1.08);
+	box-shadow: 0 16px 44px color-mix(in srgb, var(--shell-spotlight-primary) 44%, transparent);
+}
+
+.brand-mark:focus-visible {
+	outline: 3px solid color-mix(in srgb, var(--shell-spotlight-primary) 72%, transparent);
+	outline-offset: 4px;
+}
+
+.user-menu {
+	position: absolute;
+	top: calc(100% + 0.8rem);
+	left: 0;
+	z-index: 2147483647;
+	width: min(280px, calc(100vw - 2.5rem));
+	border: 1px solid var(--shell-border);
+	border-radius: 18px;
+	background: var(--shell-bg-base);
+	box-shadow: var(--shell-shadow);
+	backdrop-filter: none;
+	padding: 0.55rem;
+	transform-origin: top left;
+	isolation: isolate;
+	overflow: hidden;
+	opacity: 0;
+	transform: translateY(-6px);
+	pointer-events: none;
+	transition:
+		opacity 160ms ease,
+		transform 160ms ease;
+}
+
+.user-menu.is-open {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+
+.user-menu::before {
+	content: '';
+	position: absolute;
+	top: -7px;
+	left: 16px;
+	width: 14px;
+	height: 14px;
+	border-left: 1px solid var(--shell-border);
+	border-top: 1px solid var(--shell-border);
+	background: var(--shell-bg-base);
+	transform: rotate(45deg);
+}
+
+.user-menu-header {
+	display: grid;
+	gap: 0.2rem;
+	padding: 0.75rem 0.8rem 0.65rem;
+	text-align: center;
+	justify-items: center;
+}
+
+.user-menu-name {
+	color: var(--shell-text);
+	font-size: 0.95rem;
+	font-weight: 750;
+	line-height: 1.2;
+}
+
+.user-menu-meta {
+	color: var(--shell-muted);
+	font-size: 0.78rem;
+	line-height: 1.25;
+}
+
+.user-menu-divider {
+	height: 1px;
+	background: var(--shell-border);
+	margin: 0.35rem;
+}
+
+.user-menu-item {
+	width: 100%;
+	border: 0;
+	border-radius: 12px;
+	background: transparent;
+	color: var(--shell-text);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	padding: 0.7rem 0.75rem;
+	cursor: pointer;
+	text-align: center;
+	font: inherit;
+	font-size: 0.9rem;
+	text-decoration: none;
+}
+
+.user-menu-item:hover,
+.user-menu-item:focus-visible {
+	background: color-mix(in srgb, var(--shell-spotlight-primary) 16%, transparent);
+	outline: none;
+}
+
+.user-menu-item.is-danger {
+	color: #f87b7b;
+}
+
+.user-menu-item.is-danger:hover,
+.user-menu-item.is-danger:focus-visible {
+	background: rgba(248, 81, 73, 0.14);
+}
+
+h1 {
+	margin: 0;
+	font-size: clamp(1.35rem, 2.4vw, 2.4rem);
+	letter-spacing: -0.045em;
+	color: var(--shell-text);
+}
