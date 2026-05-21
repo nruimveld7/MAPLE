@@ -13,5 +13,8 @@
     "@sveltejs/kit": "latest",
     "svelte": "latest",
     "vite": "latest"
+  },
+  "dependencies": {
+    "pg": "^8.13.3"
   }
 }

@@ -1,5 +1,4 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import path from 'node:path';
 import { defineConfig } from 'vite';
 
 const allowedHosts = Array.from(new Set([
@@ -15,7 +14,7 @@ export default defineConfig({
   plugins: [sveltekit()],
   resolve: {
     alias: {
-      '$shell': path.resolve('../shared-shell/src')
+      '$shell': '/shared-shell/src'
     }
   },
   server: {

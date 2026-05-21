@@ -1,8 +1,10 @@
 import { requireSession } from '$lib/server/authClient';
+import { loadXmasState } from '$lib/server/xmasStore';
 
 export async function load(event) {
 	const session = await requireSession(event);
 	const user = session.user ?? {};
+	const xmasState = await loadXmasState(user.id, user);
 
 	const shellTheme = {
 		mode: user.themeMode ?? user.colorMode ?? 'dark',
@@ -16,6 +18,7 @@ export async function load(event) {
 			...user,
 			permissions: user.permissions ?? []
 		},
-		shellTheme
+		shellTheme,
+		xmasState
 	};
 }

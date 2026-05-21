@@ -65,7 +65,7 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 			throw error(400, 'Invalid accent color values.');
 		}
 
-		await db.query(
+		const appearanceResult = await db.query(
 			`
 			update users
 			set
@@ -74,15 +74,22 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 				secondary_color = $4,
 				updated_at = now()
 			where id = $1
+			returning theme_mode, primary_color, secondary_color
 			`,
 			[session.user.id, payload.themeMode, primaryColor, secondaryColor]
 		);
 
+		if (appearanceResult.rowCount !== 1) {
+			throw error(404, 'User not found.');
+		}
+
+		const appearance = appearanceResult.rows[0];
+
 		return json({
 			success: true,
-			themeMode: payload.themeMode,
-			primaryColor,
-			secondaryColor
+			themeMode: appearance.theme_mode,
+			primaryColor: appearance.primary_color,
+			secondaryColor: appearance.secondary_color
 		});
 	}
 
@@ -93,7 +100,7 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 			throw error(400, 'At least one name value is required.');
 		}
 
-		await db.query(
+		const nameResult = await db.query(
 			`
 			update users
 			set
@@ -101,11 +108,22 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 				last_name = $3,
 				updated_at = now()
 			where id = $1
+			returning first_name, last_name
 			`,
 			[session.user.id, firstName || session.user.firstName, lastName || session.user.lastName]
 		);
 
-		return json({ success: true, firstName, lastName });
+		if (nameResult.rowCount !== 1) {
+			throw error(404, 'User not found.');
+		}
+
+		const updatedName = nameResult.rows[0];
+
+		return json({
+			success: true,
+			firstName: updatedName.first_name,
+			lastName: updatedName.last_name
+		});
 	}
 
 	if (payload.action === 'email') {
@@ -114,14 +132,16 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 			throw error(400, 'Invalid email.');
 		}
 
+		let emailResult;
 		try {
-			await db.query(
+			emailResult = await db.query(
 				`
 				update users
 				set
 					email = $2,
 					updated_at = now()
 				where id = $1
+				returning email
 				`,
 				[session.user.id, email]
 			);
@@ -132,7 +152,11 @@ export const PATCH: RequestHandler = async ({ cookies, request }) => {
 			throw err;
 		}
 
-		return json({ success: true, email });
+		if (!emailResult || emailResult.rowCount !== 1) {
+			throw error(404, 'User not found.');
+		}
+
+		return json({ success: true, email: emailResult.rows[0].email });
 	}
 
 	if (payload.action === 'password') {

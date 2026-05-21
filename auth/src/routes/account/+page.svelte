@@ -63,7 +63,8 @@
 	let appearanceSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let hasLoadedAppearance = false;
 	let isUiReady = false;
-	let lastSavedAppearanceKey = `${themeMode}|${primaryColor}|${secondaryColor}`;
+	let appearanceKey = `${themeMode}|${primaryColor}|${secondaryColor}`;
+	let lastSavedAppearanceKey = appearanceKey;
 
 	let themeSlider: HTMLElement;
 	let themeThumbX: string | null = null;
@@ -123,14 +124,18 @@
 	$: primaryFormatSliderInlineStyle = formatSliderStyle(activeFormat.primary, formatThumbX.primary);
 	$: secondaryFormatSliderInlineStyle = formatSliderStyle(activeFormat.secondary, formatThumbX.secondary);
 
+	$: appearanceKey = `${themeMode}|${primaryColor}|${secondaryColor}`;
+
 	$: if (browser) {
+		// Explicit deps keep Svelte reactivity reliable for theme updates.
+		themeMode;
+		primaryColor;
+		secondaryColor;
 		applyThemeVars();
 	}
 
-	$: if (hasLoadedAppearance && browser) {
-		if (appearanceKey !== lastSavedAppearanceKey) {
-			scheduleAppearanceSave();
-		}
+	$: if (hasLoadedAppearance && browser && appearanceKey !== lastSavedAppearanceKey) {
+		scheduleAppearanceSave();
 	}
 
 	function toggleUserMenu() {
@@ -222,18 +227,20 @@
 				})
 			});
 			if (!response.ok) {
-				const body = await response.text();
-				if (DEBUG_APPEARANCE) {
-				}
 				return;
 			}
+
+			const body = await response.json();
+			themeMode = body.themeMode ?? themeMode;
+			primaryColor = body.primaryColor ?? primaryColor;
+			secondaryColor = body.secondaryColor ?? secondaryColor;
 			lastSavedAppearanceKey = appearanceStateKey();
 		} catch (err) {
 		}
 	}
 
 	function appearanceStateKey() {
-		return `${themeMode}|${primaryColor}|${secondaryColor}`;
+		return appearanceKey;
 	}
 
 	function setThemeMode(next: ThemeMode, source: string, options: { resetThumb?: boolean } = {}) {
@@ -303,8 +310,9 @@
 				return;
 			}
 
-			firstName = nextFirstName;
-			lastName = nextLastName;
+			const body = await response.json();
+			firstName = body.firstName ?? nextFirstName;
+			lastName = body.lastName ?? nextLastName;
 			openSection = null;
 			setFeedback('name', 'success', 'Name saved.');
 		} catch {
@@ -343,7 +351,8 @@
 				return;
 			}
 
-			email = nextEmail;
+			const body = await response.json();
+			email = body.email ?? nextEmail;
 			draftEmail = '';
 			openSection = null;
 			setFeedback('email', 'success', 'Email saved.');
